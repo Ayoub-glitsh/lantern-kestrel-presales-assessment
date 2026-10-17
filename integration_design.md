@@ -1,4 +1,8 @@
 
+<div align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&pause=1000&center=true&vCenter=true&width=800&lines=Lantern+%C3%97+Kestrel+Pay+%E2%80%94+CI%2FCD+Integration+Design" alt="Lantern × Kestrel Pay — CI/CD Integration Design" />
+</div>
+
 
 
 # Lantern × Kestrel Pay — CI/CD Integration Design
