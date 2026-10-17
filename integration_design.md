@@ -79,7 +79,7 @@ Kestrel Pay operates a GitLab monorepo with Android, iOS, web, and API component
                    └───────────────────────┘
 ```
 
-> **Important:** The Lantern CLI does not scan from the runner machine. It submits the file or URL to the Lantern SaaS engine and waits for results (`--wait` blocks up to 60 minutes).
+> **How to read this diagram:** The Lantern CLI runs inside the GitLab runner as part of a pipeline job. It does **not** perform the scan locally — it simply packages the binary file (APK, AAB, IPA) or the target URL and sends it to the Lantern SaaS platform hosted in the EU region. The SaaS engine then runs the actual static and/or dynamic analysis, compares results against the baseline scan (if provided), applies the severity threshold, and returns a JSON result object plus an exit code. The runner receives that exit code and decides whether to pass, block, or flag an error. The key implication: **the runner needs internet access to reach Lantern, but Lantern's scanners need to reach your web target directly** — which is why `staging.kestrel.test` requires an allowlist (see §2.3).
 
 ---
 
@@ -116,6 +116,8 @@ Kestrel Pay operates a GitLab monorepo with Android, iOS, web, and API component
            exit 3 → [ERROR] ──► config/auth issue, fix & rerun       │││
 ```
 
+> **How to read this diagram:** Every Git event (a push, a tag, a schedule) triggers one of three pipeline types. A **merge request** runs a fast static scan and blocks the merge if a new high/critical finding is detected — fork MRs are skipped entirely because GitLab does not expose protected variables to external contributor pipelines (E3). The **nightly** pipeline is the most thorough: it runs full static + dynamic scans on Android, iOS, and the staging web/API — but it never blocks; it records findings for the team to review. The **release** pipeline is the hard gate: it compares every finding against the last accepted baseline, and only *new* high or critical findings cause a block. Exit codes 2 and 3 (technical errors) always surface as `error` and never silently pass a broken scan through.
+
 ---
 
 ### 2.3 Runner & Network Topology
@@ -139,6 +141,8 @@ Kestrel Pay operates a GitLab monorepo with Android, iOS, web, and API component
                         │   allowlisted — request pending       │
                         └──────────────────────────────────────┘
 ```
+
+> **How to read this diagram:** Kestrel runs three types of runners. `saas-linux` is a shared GitLab runner with direct internet access — it handles Android builds and most security scans. `staging-net` is a self-hosted runner sitting inside the internal network, which is the only way to reach `staging.kestrel.test`; it also has internet egress through a proxy so it can still reach the Lantern SaaS API. `macos` is dedicated to iOS builds and has no special network requirements. The critical blocker: Lantern's scan engine connects *from its own cloud infrastructure* to reach `staging.kestrel.test` — so even though `staging-net` can submit the scan, Lantern's egress IPs must be added to the staging firewall allowlist before the web/API scan can actually run. That request has not been filed yet and takes ~5 business days (E5).
 
 ---
 
@@ -168,6 +172,8 @@ Kestrel Pay operates a GitLab monorepo with Android, iOS, web, and API component
 │  Fork MR → job skipped (no LANTERN_API_KEY available) (E3)             │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **How to read this diagram:** By the time the Android debug build finishes, the MR pipeline has already consumed 13 of its 15-minute budget (lint 2 min + unit tests 5 min + build 6 min), leaving only 2 minutes for security scanning. A `mobile-full` scan takes 20–45 minutes (P9) — running it with `--wait` would cause every MR to time out. The solution is `mobile-static`, which performs static analysis only and completes fast enough to fit the budget. Dynamic analysis (DAST) is deferred to the nightly pipeline which has a 5-hour window. For fork MRs (external contributors), GitLab's protected variable policy prevents the `LANTERN_API_KEY` from being injected at all (E3), so the scan job is skipped rather than failing with a confusing auth error.
 
 | Field | Value |
 |---|---|
@@ -222,6 +228,8 @@ lantern scan mobile \
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+> **How to read this diagram:** The nightly pipeline runs at 02:00 UTC on the `main` branch and has until 07:00 UTC — a 5-hour window. This allows running `mobile-full` scans (static + dynamic, up to 45 min per target) and the web/API DAST (up to 90 min) in parallel without any time pressure. Crucially, **none of these scans block the pipeline** — findings are recorded in the Lantern dashboard and routed to Jira, but the nightly build is not stopped. This lets the team track trends daily without disrupting the release rhythm. Two important constraints apply to the web scan: (1) it must run on the `staging-net` runner since staging is on the internal network, and (2) it must authenticate using the `staging-ci-token` profile (bearer token for `ci-scanner`) — the `staging-qa-user` profile uses `qa-auto` which has MFA enforced since 2026-10-01 (E6), and Lantern's recorded login cannot complete MFA challenges (P2).
+
 | Job | Target | Plan | Auth | Blocks |
 |---|---|---|---|---|
 | `lantern-nightly-android` | `app-release.aab` | `mobile-full` | — | No — report |
@@ -273,6 +281,8 @@ lantern scan mobile \
 │              └───────────────────────────────────┘                     │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **How to read this diagram:** A release pipeline is triggered when Rafa creates a `v*` tag on a `release/*` branch. Both Android and iOS scans run in parallel, each comparing results against their respective baseline scan from the last accepted release. Only findings whose fingerprint does **not** appear in the baseline are counted — this is how Kestrel's "block only on new" policy (E4, R4) is enforced. The Android AAB gets full static + dynamic analysis. The App Store IPA gets static analysis only because Apple's encryption prevents Lantern from running the dynamic engine (P1) — this is expected behaviour, not an error. If both scans exit 0, the gate passes, a SARIF report is exported for audit purposes (R7), and the manual `publish` job is unlocked for Lina. If either scan exits 1 (new high/critical finding), 2 (timeout), or 3 (config error), the `publish` job remains locked and the release is blocked until remediated or manually approved by Imane (E4).
 
 **Commands:**
 ```bash
@@ -329,6 +339,8 @@ GitLab Project Settings
 # LANTERN_API_KEY injected automatically by GitLab on protected branches/tags
 ```
 
+> **How this works:** GitLab CI/CD variables marked as `protected` are only injected into pipelines running on protected refs (branches/tags defined in GitLab's protected branch settings). Variables marked as `masked` are redacted from job logs so the key never appears in plain text. The YAML file itself contains no secrets — the runner receives the key automatically at runtime without it ever touching the repository. This satisfies Kestrel's company policy (E3) and eliminates the exposure risk from the draft pipeline.
+
 ### 4.3 Variable Availability Matrix
 
 ```
@@ -342,6 +354,8 @@ GitLab Project Settings
 │ Fork MR (external contrib.) │ ❌ No — scan is skipped                 │
 └─────────────────────────────┴─────────────────────────────────────────┘
 ```
+
+> **Why fork MRs have no key:** GitLab deliberately withholds protected variables from pipelines triggered by forks. This is a security feature — an external contributor's fork could otherwise exfiltrate secrets by printing them in a job script. Since `LANTERN_API_KEY` is protected, it is simply absent in fork MR pipelines. The scan job must detect this and exit with `skip` rather than attempting to run and failing with exit code 3. This is not a Lantern limitation — it is a GitLab security boundary that the pipeline must handle gracefully.
 
 ---
 
@@ -372,6 +386,8 @@ A baseline is a completed Lantern scan used as a reference point. When `--baseli
   Next release uses new baseline
   → only findings NEW since release N will count
 ```
+
+> **How to read this diagram:** After every release, Lina performs a two-step process. First, she reviews the Lantern scan results and records the accepted scan IDs in Jira KPAY alongside the release notes (E4). Second, she updates the two GitLab CI variables `LANTERN_BASELINE_ANDROID` and `LANTERN_BASELINE_IOS` to point to the new scan IDs. From that point, the next release gate will diff against the freshly accepted baseline — meaning any finding that existed in the last release is automatically excluded and only genuinely new findings will trigger a block. **If this step is skipped**, the next release will compare against a stale baseline (e.g. still pointing to 4.11 when 4.12 introduced new known findings) and could either block on findings that were already accepted, or miss new ones depending on the fingerprint match. This process must be a mandatory checklist item in the release runbook.
 
 ### 5.3 Current Baseline Values
 
@@ -411,6 +427,8 @@ A baseline is a completed Lantern scan used as a reference point. When `--baseli
 └──────────┴────────────────────────────────────────────────────────────┘
 ```
 
+> **Why exit codes matter so much:** Exit codes are the only signal the pipeline receives from the CLI. A naive pipeline that uses `|| true` (as in the original draft) ignores exit codes entirely — if the API key is revoked (exit 3) or a scan times out (exit 2), the job still exits 0 and the pipeline turns green. Rafa's requirement R8 is specifically about this: the pipeline must never be green for the wrong reason. Exit codes 2 and 3 always surface as `error` — they do not pass, they do not block on a security finding, they pause the pipeline with a clear signal that something needs to be fixed before the release can proceed.
+
 ### 6.2 Gate Label by Pipeline × Exit Code
 
 ```
@@ -426,6 +444,8 @@ A baseline is a completed Lantern scan used as a reference point. When `--baseli
 ⚠️  Exit codes 2 and 3 are ALWAYS error — never pass, never block.
 ⚠️  || true must never be used on Lantern scan commands (R8).
 ```
+
+> **How to read this table:** Each cell defines the **gate label** — the single outcome assigned to a scan result based on the pipeline type and CLI exit code. `PASS` means the gate completed cleanly and the pipeline continues. `BLOCK` means a qualifying security finding was detected and the pipeline stops (publishing is prevented). `REPORT` means the result is recorded and routed (e.g. to Jira) but the pipeline is not stopped — this applies to all nightly outcomes because nightly is a monitoring run, not a gate. `ERROR` means the scan produced no usable result and the pipeline stops with a failure that is clearly technical rather than security-related — a reviewer seeing `ERROR` knows to look at keys, configuration, or scan duration, not at findings. `SKIP` applies to fork MRs where no scan runs at all, and the pipeline continues normally.
 
 ### 6.3 Finding Count Rules
 
@@ -448,6 +468,8 @@ Only findings with these criteria are **counted** toward exit code 1:
 │  ❌ severity is below threshold                               │
 └────────────────────────────────────────────────────────────────┘
 ```
+
+> **Why this distinction matters in practice:** A scan can return dozens of findings but zero *counted* findings — meaning the CLI exits 0 even though the report is non-empty. This is the expected and correct behaviour when all findings are either below the severity threshold, already known (in the baseline), triaged as false positives, or risk-accepted by the security team. A reviewer who sees `PASS` on a release with known vulnerabilities is not seeing a mistake — those vulnerabilities are tracked in Jira KPAY and the team has made a conscious decision about each one. The gate is designed to surface *new, unreviewed* risk, not to re-block on risk that has already been evaluated.
 
 ---
 
