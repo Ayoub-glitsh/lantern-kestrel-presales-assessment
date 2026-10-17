@@ -141,22 +141,34 @@ Kestrel operates three runners. `saas-linux` is a shared GitLab runner with dire
 
 The critical blocker for the web/API scan is that Lantern's scan engine connects **from its own cloud infrastructure** to the target URL — not from the runner. Even though `staging-net` can submit the scan job, Lantern's published egress IP ranges must be added to the staging firewall allowlist before the scan can actually reach the application. This request takes approximately 5 business days and has not yet been filed (E5).
 
-```
-                        ┌──────────────────────────────────────┐
-                        │           GitLab Runners             │
-                        │                                      │
-  Internet egress ───►  │  saas-linux   (shared, Linux)        │ ──► Lantern SaaS EU
-  Internet egress ───►  │  staging-net  (self-hosted, Linux)   │ ──► Lantern SaaS EU
-  iOS builds only ────► │  macos                               │ ──► Lantern SaaS EU
-                        └──────────────────┬───────────────────┘
-                                           │ staging-net only
-                        ┌──────────────────▼───────────────────┐
-                        │        Internal Network              │
-                        │   staging.kestrel.test               │
-                        │                                      │
-                        │   ⚠️  Lantern egress IPs NOT yet     │
-                        │   allowlisted — request pending (E5) │
-                        └──────────────────────────────────────┘
+```mermaid
+    flowchart LR
+    subgraph RUNNERS["GitLab Runners"]
+        direction TB
+        SL["saas-linux<br/>shared Linux"]
+        SN["staging-net<br/>self-hosted Linux"]
+        MAC["macos<br/>iOS builds only"]
+    end
+
+    subgraph LSaaS["Lantern SaaS (EU)"]
+        API["API endpoint<br/>scan submission"]
+    end
+
+    subgraph STG["Réseau interne Kestrel"]
+        direction TB
+        TGT["staging.kestrel.test"]
+        WARN["⚠️ Egress IPs Lantern<br/>NON allowlistées — E5<br/>(~5 jours ouvrés)"]
+    end
+
+    SL -- "Internet egress direct" --> API
+    SN -- "Internet egress via proxy" --> API
+    MAC -- "Internet egress" --> API
+
+    SN -- "seul runner à joindre staging" --> TGT
+
+    API -. "scan engine se connecte<br/>depuis SES propres IPs (P3)<br/>❌ bloqué tant que E5 non fait" .-> TGT
+
+    WARN -.- TGT
 ```
 
 ---
