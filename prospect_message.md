@@ -6,32 +6,30 @@
 
 Hi Rafa,
 
-Here is the integration plan for your Lantern trial.
+Thanks for sharing the draft pipeline — I've gone through it and put together the integration
+plan for the trial. Here's where we land.
 
-**What Lantern will do:**
-Merge request pipelines run a fast static scan on the Android debug build and block on new
-high or critical findings. Nightly pipelines run full static and dynamic scans on Android,
-iOS (ad-hoc build), and your staging web and API — findings are recorded without blocking.
-Release pipelines gate both the Android AAB and the iOS App Store IPA against your last
-accepted baseline, blocking only on genuinely new high or critical findings. SARIF reports
-are stored as pipeline artifacts for every release.
+On the pipeline side, every MR will run a fast static scan on the Android build and block if
+something new and high or critical shows up. Nightly, we go deeper — full static and dynamic
+scans on Android, iOS, and your staging environment — but nothing blocks there, it's purely
+visibility. Then at release time, both the Android and iOS builds go through the full gate
+against your last accepted baseline, so only genuinely new high or critical findings hold up
+a release. SARIF files get stored as artifacts on every release for your auditors.
 
-**What Lantern will not do:**
-Lantern does not analyse web or API source code (SAST). The App Store IPA receives static
-analysis only — dynamic testing is not possible on an encrypted binary; use the nightly
-ad-hoc build for that coverage. There is no ServiceNow integration at this time; Jira Cloud
-two-way sync is available. GraphQL-specific testing is not supported.
+A few things I want to be upfront about: Lantern doesn't do source code analysis on your
+web or API repos, so that's a gap you'd want to fill with something like Semgrep or GitLab
+SAST. The App Store IPA can only be scanned statically — Apple's encryption blocks dynamic
+analysis — but the nightly ad-hoc build covers that. And ServiceNow isn't integrated yet;
+Jira Cloud is the native option for now.
 
-**Actions required from Kestrel before the first run:**
-- Revoke the API key currently hardcoded in the draft pipeline and generate a new one
-- Store it as a masked, protected CI variable (`LANTERN_API_KEY`)
-- Add `LANTERN_BASELINE_ANDROID` and `LANTERN_BASELINE_IOS` as protected CI variables
-- File the Lantern egress IP allowlist request for `staging.kestrel.test` (Imane, ~5 days)
-- After each release, Lina updates both baseline variables to the new scan IDs
+Before anything runs, there are a few things your team needs to handle: the API key in the
+draft pipeline needs to be revoked and moved to a protected CI variable, Imane needs to file
+the allowlist request for staging (that takes about 5 days), and Lina should plan to update
+the baseline variables after each release.
 
-Happy to walk through any of this on a call.
+Let me know if you want to jump on a call to walk through any of this.
 
-Best regards
+Cheers
 
 ---
 
