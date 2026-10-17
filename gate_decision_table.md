@@ -35,69 +35,47 @@ Every scan outcome resolves to exactly **one** of these five labels:
 
 The flowchart below shows the exact order in which conditions are evaluated. Apply each check top to bottom and stop at the first match.
 
-```
-START — a Lantern scan job is about to run
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│ 1. Is this a fork MR?                   │
-│    (CI_MERGE_REQUEST_SOURCE_PROJECT_ID  │
-│     != CI_PROJECT_ID)                   │
-└──────────────┬──────────────────────────┘
-               │
-       YES ────┴────► SKIP
-               │      Reason: no LANTERN_API_KEY on fork pipelines (E3)
-               │
-              NO
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│ 2. Is LANTERN_API_KEY set and valid?    │
-│    (api_key_valid == true)              │
-└──────────────┬──────────────────────────┘
-               │
-        NO ────┴────► ERROR (exit 3)
-               │      Reason: key missing, revoked, or config error before submission (P8, P5)
-               │
-              YES
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│ 3. Did --wait complete within 60 min?  │
-│    (outcome != timeout / scan error)   │
-└──────────────┬──────────────────────────┘
-               │
-        NO ────┴────► ERROR (exit 2)
-               │      Reason: --wait timed out or scan error server-side (P4, P5)
-               │
-              YES
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│ 4. What is the pipeline type?           │
-└──────────────┬──────────────────────────┘
-               │
-      NIGHTLY ─┴────► REPORT (regardless of exit 0 or 1)
-               │      Reason: nightly is monitoring only, never blocks (design §3.2)
-               │
-  MR / RELEASE
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│ 5. Count findings that meet ALL of:    │
-│    • severity >= threshold (high)      │
-│    • status == open OR confirmed       │
-│    • fingerprint NOT in baseline       │
-└──────────────┬──────────────────────────┘
-               │
-  count == 0 ──┴────► PASS
-               │      Reason: scan completed, nothing new at or above threshold
-               │
-  count >= 1
-               │
-               ▼
-             BLOCK
-             Reason: new high/critical finding detected
+```mermaid
+
+flowchart TB
+    START(["START — un job Lantern scan<br/>va s'exécuter"])
+
+    START --> Q1{"1. Est-ce une MR<br/>depuis un fork ?<br/><i>CI_MERGE_REQUEST_SOURCE_PROJECT_ID<br/>≠ CI_PROJECT_ID</i>"}
+
+    Q1 -- "YES" --> SKIP["<b>SKIP</b><br/>Raison : pas de LANTERN_API_KEY<br/>sur pipeline fork (E3)"]
+
+    Q1 -- "NO" --> Q2{"2. LANTERN_API_KEY<br/>présente et valide ?<br/><i>api_key_valid == true</i>"}
+
+    Q2 -- "NO" --> ERR3["<b>ERROR (exit 3)</b><br/>Raison : clé manquante, révoquée,<br/>ou erreur config avant soumission<br/>(P8, P5)"]
+
+    Q2 -- "YES" --> Q3{"3. --wait terminé<br/>en moins de 60 min ?<br/><i>outcome ≠ timeout / scan error</i>"}
+
+    Q3 -- "NO" --> ERR2["<b>ERROR (exit 2)</b><br/>Raison : --wait timeout<br/>ou erreur scan côté serveur<br/>(P4, P5)"]
+
+    Q3 -- "YES" --> Q4{"4. Type de<br/>pipeline ?"}
+
+    Q4 -- "NIGHTLY" --> REPORT["<b>REPORT</b><br/>Raison : nightly = monitoring only,<br/>ne bloque jamais<br/>(design §3.2)"]
+
+    Q4 -- "MR / RELEASE" --> Q5{"5. Compter les findings<br/>qui satisfont TOUS :<br/>• severity ≥ seuil (high)<br/>• status ∈ open, confirmed<br/>• fingerprint ∉ baseline"}
+
+    Q5 -- "count == 0" --> PASS["<b>PASS</b><br/>Raison : scan terminé,<br/>aucun nouveau finding<br/>au-dessus du seuil"]
+
+    Q5 -- "count ≥ 1" --> BLOCK["<b>BLOCK</b><br/>Raison : nouveau finding<br/>high/critical détecté"]
+
+    %% Styles
+    classDef skip    fill:#e0e7ff,stroke:#4338ca,color:#1e1b4b
+    classDef err     fill:#fee2e2,stroke:#b91c1c,color:#7f1d1d
+    classDef report  fill:#fef9c3,stroke:#a16207,color:#713f12
+    classDef pass    fill:#dcfce7,stroke:#15803d,color:#14532d
+    classDef block   fill:#fecaca,stroke:#991b1b,color:#7f1d1d
+    classDef q       fill:#f1f5f9,stroke:#475569,color:#0f172a
+
+    class SKIP skip
+    class ERR2,ERR3 err
+    class REPORT report
+    class PASS pass
+    class BLOCK block
+    class Q1,Q2,Q3,Q4,Q5 q
 ```
 
 ---
