@@ -351,7 +351,7 @@ Protected variables are deliberately withheld from fork pipelines by GitLab. Thi
 │ release/* branch            │ ✅ Yes — protected branch              │
 │ v* tag                      │ ✅ Yes — protected tag                 │
 │ Internal MR branch          │ ✅ Yes — internal protected branch     │
-│ Fork MR (external contrib.) │ ❌ No  — scan is skipped (E3)         │
+│ Fork MR (external contrib.) │ ❌ No  — scan is skipped (E3)          │
 └─────────────────────────────┴────────────────────────────────────────┘
 ```
 
