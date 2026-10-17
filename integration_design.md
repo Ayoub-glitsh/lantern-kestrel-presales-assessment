@@ -84,29 +84,53 @@ Kestrel's CI/CD has three distinct pipeline types, each with a different securit
 
 Fork merge requests from external contributors are a special case. GitLab does not inject protected variables into fork pipelines as a security measure, so the API key is simply absent and the scan job is skipped rather than failing with a confusing auth error.
 
-```
-  Git Event
-      │
-      ├─── Merge Request ──────────────────────────────────────────────┐
-      │    Fork? YES → [SKIP] no key available (E3)                    │
-      │    Fork? NO  → build android debug APK                         │
-      │                  └── lantern scan mobile (static only)         │
-      │                            └── fail-on high → [BLOCK / PASS]   │
-      │                                                                 │
-      ├─── Nightly (02:00 UTC on main) ────────────────────────────────┤
-      │    build android AAB   ──► lantern scan mobile (full)          │
-      │    build iOS ad-hoc    ──► lantern scan mobile (full)          │
-      │    staging reachable?  ──► lantern scan web + API              │
-      │         └── all results → [REPORT] pipeline continues          │
-      │                                                                 │
-      └─── Release (v* tag on release/*) ─────────────────────────────┘
-           build android AAB ──► lantern scan mobile (full + baseline)
-           build iOS appstore ──► lantern scan mobile (full + baseline)
-                │
-           exit 0 → [PASS]  ──► manual publish unlocked
-           exit 1 → [BLOCK] ──► new high/critical found
-           exit 2 → [ERROR] ──► timeout, rerun or Imane approval
-           exit 3 → [ERROR] ──► config/auth issue, fix & rerun
+```mermaid
+    flowchart TD
+    EVT["Git Event"]
+
+    EVT --> MR["Merge Request"]
+    EVT --> NIG["Nightly<br/>02:00 UTC on main"]
+    EVT --> REL["Release<br/>v* tag on release/*"]
+
+    %% ---------- MERGE REQUEST ----------
+    MR --> FORK{"Fork ?"}
+    FORK -- "Oui (externe)" --> MR_SKIP["SKIP<br/>pas de clé (E3)"]
+    FORK -- "Non (interne)" --> MR_BUILD["Build APK debug Android"]
+    MR_BUILD --> MR_SCAN["lantern scan mobile<br/>plan: mobile-static"]
+    MR_SCAN --> MR_GATE{"--fail-on high"}
+    MR_GATE -- "exit 0" --> MR_PASS["PASS"]
+    MR_GATE -- "exit 1" --> MR_BLOCK["BLOCK"]
+    MR_GATE -- "exit 2/3" --> MR_ERR["ERROR"]
+
+    %% ---------- NIGHTLY ----------
+    NIG --> N_AND["Build AAB Android"]
+    NIG --> N_IOS["Build IPA iOS ad-hoc"]
+    NIG --> N_WEB{"Staging joignable ?"}
+
+    N_AND --> N_S1["Scan mobile full"]
+    N_IOS --> N_S2["Scan mobile full"]
+    N_WEB -- "Oui" --> N_S3["Scan web + API"]
+    N_WEB -- "Non" --> N_SKIP["Scan web sauté"]
+
+    N_S1 --> N_REP["REPORT<br/>pipeline continue"]
+    N_S2 --> N_REP
+    N_S3 --> N_REP
+
+    %% ---------- RELEASE ----------
+    REL --> R_AND["Build AAB Android"]
+    REL --> R_IOS["Build IPA App Store"]
+
+    R_AND --> R_S1["Scan mobile full<br/>+ baseline ANDROID"]
+    R_IOS --> R_S2["Scan mobile full<br/>+ baseline IOS"]
+
+    R_S1 --> R_GATE{"Gate Decision"}
+    R_S2 --> R_GATE
+
+    R_GATE -- "exit 0" --> R_PASS["PASS<br/>publish débloqué 🔓"]
+    R_GATE -- "exit 1" --> R_BLOCK["BLOCK<br/>nouveau high/critical"]
+    R_GATE -- "exit 2" --> R_ERR2["ERROR<br/>timeout → rerun / Imane"]
+    R_GATE -- "exit 3" --> R_ERR3["ERROR<br/>config/auth → fix & rerun"]
+
 ```
 
 ---
