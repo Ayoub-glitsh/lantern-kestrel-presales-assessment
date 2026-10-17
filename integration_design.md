@@ -131,7 +131,7 @@ Fork merge requests from external contributors are a special case. GitLab does n
     R_S1 --> R_GATE{"Gate Decision"}
     R_S2 --> R_GATE
 
-    R_GATE -- "exit 0" --> R_PASS["PASS<br/>publish débloqué 🔓"]
+    R_GATE -- "exit 0" --> R_PASS["PASS<br/>publish débloqué "]
     R_GATE -- "exit 1" --> R_BLOCK["BLOCK<br/>nouveau high/critical"]
     R_GATE -- "exit 2" --> R_ERR2["ERROR<br/>timeout → rerun / Imane"]
     R_GATE -- "exit 3" --> R_ERR3["ERROR<br/>config/auth → fix & rerun"]
@@ -162,7 +162,7 @@ The critical blocker for the web/API scan is that Lantern's scan engine connects
     subgraph STG["Réseau interne Kestrel"]
         direction TB
         TGT["staging.kestrel.test"]
-        WARN["⚠️ Egress IPs Lantern<br/>NON allowlistées  E5<br/>(~5 jours ouvrés)"]
+        WARN[" Egress IPs Lantern<br/>NON allowlistées  E5<br/>(~5 jours ouvrés)"]
     end
 
     SL -- "Internet egress direct" --> API
@@ -171,7 +171,7 @@ The critical blocker for the web/API scan is that Lantern's scan engine connects
 
     SN -- "seul runner à joindre staging" --> TGT
 
-    API -. "scan engine se connecte<br/>depuis SES propres IPs (P3)<br/>❌ bloqué tant que E5 non fait" .-> TGT
+    API -. "scan engine se connecte<br/>depuis SES propres IPs (P3)<br/> bloqué tant que E5 non fait" .-> TGT
 
     WARN -.- TGT
 ```
@@ -241,7 +241,7 @@ flowchart TB
     I1 --> I2["lantern-nightly-ios<br/>plan: mobile-full<br/>--wait --fail-on high<br/>runner: macos"]
     W1 --> W2["lantern-nightly-web<br/>--target https://staging.kestrel.test<br/>--auth staging-ci-token<br/>--openapi api/openapi.yaml<br/>--wait"]
 
-    W2 -.- E5["⚠️ E5  egress IPs Lantern<br/>non allowlistées"]
+    W2 -.- E5[" E5  egress IPs Lantern<br/>non allowlistées"]
 
     A2 --> R["REPORT  no block"]
     I2 --> R
@@ -298,17 +298,17 @@ flowchart TB
     T --> A1["Build AAB Android"]
     T --> I1["Build IPA App Store"]
 
-    A1 --> A2["scan mobile (full)<br/>--baseline ANDROID<br/>--fail-on high<br/>static + dynamic ✅"]
-    I1 --> I2["scan mobile (full)<br/>--baseline IOS<br/>--fail-on high<br/>static only ✅<br/>DAST skipped (encrypted) ⚠️ P1"]
+    A1 --> A2["scan mobile (full)<br/>--baseline ANDROID<br/>--fail-on high<br/>static + dynamic "]
+    I1 --> I2["scan mobile (full)<br/>--baseline IOS<br/>--fail-on high<br/>static only <br/>DAST skipped (encrypted)  P1"]
 
     A2 --> G{"Gate Decision"}
     I2 --> G
 
     G -- "exit 0" --> P["PASS"]
-    P --> S["export SARIF"] --> PUB["publish 🔓"]
+    P --> S["export SARIF"] --> PUB["publish "]
 
     G -- "exit 1" --> B["BLOCK"]
-    B --> L["publish locked 🔒"]
+    B --> L["publish locked "]
 
     G -- "exit 2" --> E2["ERROR  rerun or Imane approval"]
     G -- "exit 3" --> E3["ERROR  fix config & rerun"]
@@ -352,11 +352,11 @@ Protected variables are deliberately withheld from fork pipelines by GitLab. Thi
 ┌─────────────────────────────┬────────────────────────────────────────┐
 │ Pipeline context            │ LANTERN_API_KEY available?             │
 ├─────────────────────────────┼────────────────────────────────────────┤
-│ main branch (scheduled)     │ ✅ Yes  protected schedule            │
-│ release/* branch            │ ✅ Yes  protected branch              │
-│ v* tag                      │ ✅ Yes  protected tag                 │
-│ Internal MR branch          │ ✅ Yes  internal protected branch     │
-│ Fork MR (external contrib.) │ ❌ No   scan is skipped (E3)          │
+│ main branch (scheduled)     │ ✅ Yes  protected schedule             │
+│ release/* branch            │ ✅ Yes  protected branch               │
+│ v* tag                      │ ✅ Yes  protected tag                  │
+│ Internal MR branch          │ ✅ Yes  internal protected branch      │
+│ Fork MR (external contrib.) │ ❌ No   scan is skipped (E3)           │
 └─────────────────────────────┴────────────────────────────────────────┘
 ```
 
