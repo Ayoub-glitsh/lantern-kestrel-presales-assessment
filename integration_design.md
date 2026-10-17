@@ -196,21 +196,17 @@ lantern scan mobile \
   --fail-on high
 ```
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  MR Pipeline                               Total budget: 15 min         │
-│                                                                         │
-│  lint (2 min) ──► unit-tests (5 min) ──► build-android-debug (6 min)   │
-│                                                    │  [13 min used]     │
-│                                         ┌──────────▼──────────────┐    │
-│                                         │ lantern-mr-android       │    │
-│                                         │ plan: mobile-static      │    │
-│                                         │ --wait  --fail-on high   │    │
-│                                         │ [fits in 2 min budget]   │    │
-│                                         └──────────────────────────┘    │
-│                                                                         │
-│  Fork MR ──► [SKIP]  no key available (E3)                             │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+
+flowchart LR
+    L["lint<br/>2 min"] --> U["unit-tests<br/>5 min"] --> B["build-android-debug<br/>6 min"]
+    B -- "13 min utilisées<br/>⏱ 2 min restantes" --> S["lantern-mr-android<br/>plan: mobile-static<br/>--wait --fail-on high<br/>✅ tient dans 2 min"]
+    S --> G{"Gate"}
+    G -- "exit 0" --> P["PASS"]
+    G -- "exit 1" --> K["BLOCK"]
+    G -- "exit 2/3" --> E["ERROR"]
+    F["Fork MR"] --> SK["SKIP<br/>pas de clé (E3)"]
+
 ```
 
 ---
