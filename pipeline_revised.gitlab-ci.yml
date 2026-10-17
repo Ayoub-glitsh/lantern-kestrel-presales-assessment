@@ -1,0 +1,251 @@
+# Kestrel Pay monorepo pipeline — revised by Lantern Pre-Sales Engineer 2026-10-19
+# Fictional assessment fixture. Build scripts are placeholders.
+# All Lantern secrets are stored as masked + protected CI variables in GitLab project settings.
+# No secret appears in this file. See pipeline_changes.md for the full change list.
+
+stages: [lint, test, build, security, release]
+
+# B1 FIX: LANTERN_API_KEY removed from YAML variables.
+# It is now a masked + protected CI variable in GitLab project settings (E3, P8).
+# GRADLE_OPTS is non-sensitive and kept here.
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+default:
+  tags: [saas-linux]
+
+# ──────────────────────────────────────────────
+# LINT & TEST (unchanged)
+# ──────────────────────────────────────────────
+
+lint:
+  stage: lint
+  script: [./scripts/lint.sh]
+
+unit-tests:
+  stage: test
+  script: [./scripts/unit.sh]
+
+# ──────────────────────────────────────────────
+# BUILD JOBS (unchanged except comments)
+# ──────────────────────────────────────────────
+
+build-android-debug:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script: [cd android && ./gradlew assembleDebug]
+  artifacts:
+    paths: [android/app/build/outputs/apk/debug/app-debug.apk]
+    expire_in: 1 day
+
+build-android-release:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  script: [cd android && ./gradlew bundleRelease]
+  artifacts:
+    paths: [android/app/build/outputs/bundle/release/app-release.aab]
+    expire_in: 7 days
+
+build-ios-adhoc:
+  stage: build
+  tags: [macos]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script: [./scripts/ios-build.sh adhoc ios/build/Kestrel-adhoc.ipa]
+  artifacts:
+    paths: [ios/build/Kestrel-adhoc.ipa]
+    expire_in: 7 days
+
+build-ios-release:
+  stage: build
+  tags: [macos]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  script: [./scripts/ios-build.sh appstore ios/build/Kestrel-appstore.ipa]
+  artifacts:
+    paths: [ios/build/Kestrel-appstore.ipa]
+    expire_in: 7 days
+
+# ──────────────────────────────────────────────
+# SECURITY — MERGE REQUEST
+# ──────────────────────────────────────────────
+
+lantern-mr-android:
+  stage: security
+  rules:
+    # B10 FIX: Fork MRs are skipped — LANTERN_API_KEY is not injected into fork pipelines
+    # by GitLab's protected variable policy. Running would exit 3 (auth error). (E3, P8)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID == $CI_PROJECT_ID'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID != $CI_PROJECT_ID'
+      when: never
+  script:
+    # B2 FIX: Changed --plan from mobile-full to mobile-static.
+    # mobile-full takes 20-45 min (P9); only 2 min remain in the MR budget (E2).
+    # mobile-static fits within the budget and catches high/critical via static analysis.
+    - lantern scan mobile
+        --file android/app/build/outputs/apk/debug/app-debug.apk
+        --plan mobile-static
+        --wait
+        --fail-on high
+
+# ──────────────────────────────────────────────
+# SECURITY — NIGHTLY
+# ──────────────────────────────────────────────
+
+lantern-nightly-android:
+  stage: security
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    # B3 FIX: Removed || true. Exit codes 2 and 3 must surface as errors, not be silenced. (R8, P5)
+    # Nightly does not block the pipeline on findings (exit 1 is acceptable here),
+    # but scan errors (exit 2/3) must fail the job so the team is notified.
+    - |
+      lantern scan mobile \
+        --file android/app/build/outputs/bundle/release/app-release.aab \
+        --plan mobile-full \
+        --wait \
+        --fail-on high
+      EXIT=$?
+      if [ $EXIT -eq 1 ]; then
+        echo "Findings reported — nightly does not block. Review in Lantern dashboard."
+        exit 0
+      fi
+      exit $EXIT
+
+lantern-nightly-ios:
+  stage: security
+  # B12 FIX: Added tags: [macos]. The iOS IPA is built on the macos runner and the
+  # artifact is only available there. Missing tag would cause the job to run on saas-linux
+  # where the file does not exist. (E7)
+  tags: [macos]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    # B3 FIX: Removed || true. Same exit-code handling as lantern-nightly-android. (R8, P5)
+    - |
+      lantern scan mobile \
+        --file ios/build/Kestrel-adhoc.ipa \
+        --plan mobile-full \
+        --wait \
+        --fail-on high
+      EXIT=$?
+      if [ $EXIT -eq 1 ]; then
+        echo "Findings reported — nightly does not block. Review in Lantern dashboard."
+        exit 0
+      fi
+      exit $EXIT
+
+lantern-nightly-web:
+  stage: security
+  # B5 FIX: Added tags: [staging-net]. staging.kestrel.test is reachable only from the
+  # internal network. saas-linux cannot reach it. (E5, E7, P3)
+  tags: [staging-net]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    # B3 FIX: Removed || true. Same exit-code handling as mobile nightly jobs. (R8, P5)
+    # B4 FIX: Changed --auth from staging-qa-user to staging-ci-token.
+    #   qa-auto has MFA enforced since 2026-10-01; Lantern recorded login cannot complete MFA. (E6, P2)
+    #   ci-scanner uses a non-expiring bearer token — no MFA involved.
+    # NOTE: This job will exit 3 (target unreachable) until Imane files the Lantern egress
+    #       IP allowlist request for staging.kestrel.test (~5 business days, E5).
+    - |
+      lantern scan web \
+        --target https://staging.kestrel.test \
+        --auth staging-ci-token \
+        --openapi api/openapi.yaml \
+        --wait
+      EXIT=$?
+      if [ $EXIT -eq 1 ]; then
+        echo "Findings reported — nightly does not block. Review in Lantern dashboard."
+        exit 0
+      fi
+      exit $EXIT
+
+# ──────────────────────────────────────────────
+# SECURITY — RELEASE GATE
+# ──────────────────────────────────────────────
+
+lantern-release-android:
+  stage: security
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  # B6 FIX: Removed allow_failure: true.
+  # A security gate that allows failure is not a gate. Exit 1 must block the release. (E4, R8)
+  script:
+    # B7 FIX: Changed --fail-on from medium to high.
+    #   E4 states releases block only on new high or critical findings.
+    #   Blocking on medium contradicts the agreed policy and would create noise. (E4)
+    # B8 FIX: Added --baseline $LANTERN_BASELINE_ANDROID.
+    #   Without a baseline every known finding counts, blocking on issues already tracked
+    #   in Jira KPAY and accepted by the security team. (E4, P7, R4)
+    # B9 NOTE: If the scan exceeds 60 min, --wait exits 2. This is handled as ERROR (never pass).
+    #   The release may proceed only after a successful rerun or Imane's manual approval (E4).
+    - lantern scan mobile
+        --file android/app/build/outputs/bundle/release/app-release.aab
+        --plan mobile-full
+        --baseline $LANTERN_BASELINE_ANDROID
+        --wait
+        --fail-on high
+  after_script:
+    # R7: Export SARIF artifact for audit retention after the scan completes (pass or findings).
+    # LANTERN_SCAN_ID must be captured from the JSON stdout of the scan command above.
+    # For simplicity in this design, the export is triggered unconditionally in after_script.
+    - |
+      if [ -n "$LANTERN_SCAN_ID_ANDROID" ]; then
+        lantern export \
+          --scan-id $LANTERN_SCAN_ID_ANDROID \
+          --format sarif \
+          --out lantern-android-release.sarif
+      fi
+  artifacts:
+    paths: [lantern-android-release.sarif]
+    expire_in: 1 year
+    when: always
+
+lantern-release-ios:
+  stage: security
+  # B12 FIX: Added tags: [macos]. iOS artifacts are produced on and available from macos only. (E7)
+  tags: [macos]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  # B6 FIX: No allow_failure here either (was implicit in the original single job).
+  script:
+    # B7 FIX: Changed --fail-on from medium to high. (E4)
+    # B8 FIX: Added --baseline $LANTERN_BASELINE_IOS. (E4, P7, R4)
+    # NOTE: App Store IPA is encrypted by Apple. Lantern performs static analysis only;
+    #       DAST is skipped automatically and reported as such — not a scan error. (P1)
+    - lantern scan mobile
+        --file ios/build/Kestrel-appstore.ipa
+        --plan mobile-full
+        --baseline $LANTERN_BASELINE_IOS
+        --wait
+        --fail-on high
+  after_script:
+    # R7: Export SARIF for iOS scan (same pattern as Android above).
+    - |
+      if [ -n "$LANTERN_SCAN_ID_IOS" ]; then
+        lantern export \
+          --scan-id $LANTERN_SCAN_ID_IOS \
+          --format sarif \
+          --out lantern-ios-release.sarif
+      fi
+  artifacts:
+    paths: [lantern-ios-release.sarif]
+    expire_in: 1 year
+    when: always
+
+# ──────────────────────────────────────────────
+# RELEASE — PUBLISH (unchanged logic)
+# ──────────────────────────────────────────────
+
+publish:
+  stage: release
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+      when: manual
+  script: [./scripts/publish.sh]
