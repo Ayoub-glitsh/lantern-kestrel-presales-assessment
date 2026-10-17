@@ -6,52 +6,47 @@
 
 ## Design Tradeoff — MR scan plan: `mobile-static` vs `mobile-full`
 
-The most consequential design decision in this integration is the choice of scan plan for
-the merge request pipeline.
+So the first thing that jumped out when I read Rafa's request R1 was "block every MR on high
+or critical" — which sounds simple until you look at the time budget.
 
-Rafa asked that every MR introducing a high or critical finding be blocked before merge (R1).
-The natural answer would be `mobile-full` — static and dynamic analysis — because it gives
-the most complete coverage. But `mobile-full` takes 20 to 45 minutes (P9), and by the time
-the Android debug build finishes, the MR pipeline has already used 13 of its 15-minute
-budget (lint 2 min + unit tests 5 min + build 6 min). Running `mobile-full` with `--wait`
-would cause every single MR to time out, making the gate both unusable and unreliable.
+By the time the Android debug build finishes, the MR pipeline has already eaten 13 of its
+15 minutes. Lint takes 2, unit tests take 5, the build takes 6. That leaves 2 minutes. A
+`mobile-full` scan takes anywhere from 20 to 45 minutes. So if I just dropped it in with
+`--wait`, every single MR would time out, every time. That's not a gate — that's just a
+broken pipeline.
 
-The tradeoff I made is to use `mobile-static` on MR — static analysis only — and accept that
-dynamic findings will not be caught at the MR stage. This is a real gap: a vulnerability
-that only manifests at runtime would pass through the MR gate. The mitigation is layered
-coverage: the nightly pipeline runs `mobile-full` every night on `main`, so dynamic findings
-surface within 24 hours of a merge, and the release gate runs `mobile-full` with a baseline
-before any build reaches production. No high or critical finding — static or dynamic — can
-reach a release without being caught.
+I thought about removing `--wait` and just submitting the scan without blocking. But that
+always exits 0 (P5), which means the MR goes green before any result is back. That's the
+worst of both worlds — you think you have security coverage but you actually have nothing.
 
-I chose this tradeoff over the alternative (removing `--wait` on MR and just submitting
-without blocking) because submitting without `--wait` always exits 0 (P5), which would give
-a false sense of security — the MR would turn green before any result is available. A
-`mobile-static` scan with `--wait` and `--fail-on high` is a real gate, even if it covers
-less than `mobile-full`.
+So I went with `mobile-static`. It's static analysis only, it fits in the budget, and it
+still catches the majority of high and critical findings. Yes, there's a gap — anything that
+only shows up at runtime won't be caught on MR. But I'm comfortable with that tradeoff
+because the nightly runs `mobile-full` every night, so dynamic findings surface within 24
+hours of a merge. And the release gate runs `mobile-full` with a baseline before anything
+ships. Nothing gets to production without full coverage.
 
 ---
 
-## Verification Check — S01 exit code and label
+## Verification Check — S01, why I almost got it wrong
 
-S01 is the scenario most likely to produce the wrong label on a quick read, so I used it as
-my primary verification check.
+S01 is the one I'd flag as the easiest trap in the batch.
 
-The scenario is a release gate on the Android AAB for release 4.12.0. The scan returns three
-findings: F-101 (high, open), F-102 (medium, open), F-103 (low, open). At first glance,
-F-101 looks like it should trigger exit 1 and a `block` label — it is high severity and open
-status, both conditions for counting.
+You open the scenario, you see F-101: high severity, open status. That's two out of three
+conditions for counting met right there. My first instinct was exit 1, `block`.
 
-The check I ran was to compare F-101's fingerprint (`fp-and-01`) against the baseline
-fingerprints listed in the scenario. The baseline `rel-4.11-android` contains `[fp-and-01,
-fp-and-02]`. F-101's fingerprint is in the baseline — it is excluded by baseline (P7) and
-does not count. F-102 and F-103 are below the high threshold. Counted findings: zero. Exit
-code: 0. Label: `pass`.
+But before I wrote anything down I went back and checked the fingerprints. The baseline
+`rel-4.11-android` lists `[fp-and-01, fp-and-02]`. F-101's fingerprint is `fp-and-01` —
+it's in the baseline. Excluded. Doesn't count. F-102 and F-103 are both below the high
+threshold. So the counted findings total is zero, the CLI exits 0, and the label is `pass`.
 
-This check confirmed that the baseline exclusion logic must be applied before the exit-code
-threshold check — not after. A finding can look alarming on paper but produce no gate action
-if it was already accepted in the previous release. That is exactly the behaviour Imane asked
-for in R4, and it is what `--baseline` delivers.
+That's a really important thing to internalise: a finding being high and open doesn't
+automatically mean it blocks. If the security team already reviewed it, accepted it in the
+last release, and Lina recorded the scan ID — it's in the baseline and it's gone. That's
+exactly what Imane asked for in R4. The `--baseline` flag is what makes this work.
 
-I applied the same per-finding verification to all nine scenarios before assigning any label,
-which is why the batch analysis takes the form of an explicit table rather than a summary.
+After catching that on S01, I made a point of going finding by finding on every scenario
+rather than just scanning for the highest severity. It takes longer but you don't get
+surprised by S06 where there are five findings and zero of them count — for five completely
+different reasons.
+
