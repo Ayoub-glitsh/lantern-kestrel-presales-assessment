@@ -1,14 +1,14 @@
-# Pipeline Change List — Kestrel Pay Draft → Revised
+# Pipeline Change List  Kestrel Pay Draft → Revised
 
 **File corrected:** `inputs/current.gitlab-ci.yml` → `pipeline_revised.gitlab-ci.yml`  
-**Reviewed by:** Pre-Sales Engineer, Lantern — 2026-10-19  
+**Reviewed by:** Pre-Sales Engineer, Lantern  2026-10-19  
 
 Every change below references the fact ID(s) that justify it. Facts come from
 `inputs/environment.md` (E1–E9), `inputs/product.md` (P1–P12), and `inputs/requests.md` (R1–R8).
 
 ---
 
-## B1 — API key hardcoded in YAML variables
+## B1  API key hardcoded in YAML variables
 
 **Original:**
 ```yaml
@@ -28,7 +28,7 @@ API keys to be stored only as masked, protected CI variables.
 
 ---
 
-## B2 — MR scan used `mobile-full` — exceeds time budget
+## B2  MR scan used `mobile-full`  exceeds time budget
 
 **Original:**
 ```yaml
@@ -48,7 +48,7 @@ static analysis only and fits within the budget while still catching high and cr
 
 ---
 
-## B3 — `|| true` silenced scan errors on nightly jobs
+## B3  `|| true` silenced scan errors on nightly jobs
 
 **Original:**
 ```yaml
@@ -77,7 +77,7 @@ never quietly turn the pipeline green for the wrong reason.
 
 ---
 
-## B4 — Nightly web scan used `staging-qa-user` — MFA blocks login
+## B4  Nightly web scan used `staging-qa-user`  MFA blocks login
 
 **Original:**
 ```yaml
@@ -90,20 +90,20 @@ lantern-nightly-web:
 
 **Why it matters:** The `staging-qa-user` auth profile uses a recorded login of `qa-auto`.
 Since 2026-10-01, `qa-auto` has MFA enforced. Lantern's recorded login mechanism cannot
-complete MFA challenges — the authentication would fail at scan time (exit 3). The correct
+complete MFA challenges  the authentication would fail at scan time (exit 3). The correct
 profile is `staging-ci-token`, which uses a static bearer token for the `ci-scanner` service
-account — no MFA involved.
+account  no MFA involved.
 
 **Ref:** E6 (MFA enforced on qa-auto since 2026-10-01), P2 (recorded login cannot complete MFA)
 
 ---
 
-## B5 — Nightly web scan ran on `saas-linux` — cannot reach staging
+## B5  Nightly web scan ran on `saas-linux`  cannot reach staging
 
 **Original:**
 ```yaml
 lantern-nightly-web:
-  # no tags — inherits default: saas-linux
+  # no tags  inherits default: saas-linux
   script:
     - lantern scan web --target https://staging.kestrel.test ...
 ```
@@ -123,7 +123,7 @@ business days, action item A6).
 
 ---
 
-## B6 — Release gate had `allow_failure: true` — security block was bypassed
+## B6  Release gate had `allow_failure: true`  security block was bypassed
 
 **Original:**
 ```yaml
@@ -146,7 +146,7 @@ remains locked.
 
 ---
 
-## B7 — Release gate used `--fail-on medium` — contradicts release policy
+## B7  Release gate used `--fail-on medium`  contradicts release policy
 
 **Original:**
 ```yaml
@@ -167,7 +167,7 @@ releases. The threshold must match the policy exactly.
 
 ---
 
-## B8 — Release gate had no `--baseline` flag — all known findings blocked
+## B8  Release gate had no `--baseline` flag  all known findings blocked
 
 **Original:**
 ```yaml
@@ -187,8 +187,8 @@ the last accepted release:
 
 Lina (release manager) must update both variables after each release.
 
-**Why it matters:** Without a baseline, every finding in the current scan — including
-findings already tracked and accepted in Jira KPAY — counts toward exit code 1 and blocks
+**Why it matters:** Without a baseline, every finding in the current scan  including
+findings already tracked and accepted in Jira KPAY  counts toward exit code 1 and blocks
 the release. The entire point of Imane's request R4 is to block only on genuinely new
 findings. The `--baseline` flag implements this by excluding findings whose fingerprint
 already exists in the reference scan.
@@ -197,7 +197,7 @@ already exists in the reference scan.
 
 ---
 
-## B9 — No handling for scan timeout (exit 2) on release
+## B9  No handling for scan timeout (exit 2) on release
 
 **Original:** No mention of exit 2 behaviour in the release job.
 
@@ -213,7 +213,7 @@ This is documented in comments within the pipeline file and in the integration d
 
 ---
 
-## B10 — Fork MRs would fail with exit 3 instead of being skipped
+## B10  Fork MRs would fail with exit 3 instead of being skipped
 
 **Original:**
 ```yaml
@@ -244,7 +244,7 @@ the revised rules implement.
 
 ---
 
-## B11 — No SARIF export after release scan
+## B11  No SARIF export after release scan
 
 **Original:** No `lantern export` command in the release gate job.
 
@@ -260,17 +260,17 @@ dashboard and are not attached to the GitLab pipeline for audit retrieval.
 
 ---
 
-## B12 — Nightly iOS scan had no `macos` runner tag
+## B12  Nightly iOS scan had no `macos` runner tag
 
 **Original:**
 ```yaml
 lantern-nightly-mobile:
-  # no tags — inherits default: saas-linux
+  # no tags  inherits default: saas-linux
   script:
     - lantern scan mobile --file ios/build/Kestrel-adhoc.ipa ...
 ```
 
-**Fix:** Split `lantern-nightly-mobile` into two separate jobs — `lantern-nightly-android`
+**Fix:** Split `lantern-nightly-mobile` into two separate jobs  `lantern-nightly-android`
 (runs on `saas-linux`, the default) and `lantern-nightly-ios` (runs on `macos`).
 
 **Why it matters:** The iOS IPA artifact is produced by `build-ios-adhoc` which runs on the
@@ -290,11 +290,11 @@ scan would fail with a file-not-found error (exit 3).
 | B2 | `lantern-mr-android` | `--plan mobile-full` exceeds MR time budget | Changed to `--plan mobile-static` |
 | B3 | `lantern-nightly-mobile`, `lantern-nightly-web` | `\|\| true` silences exit codes 2 and 3 | Replaced with explicit exit-code handler |
 | B4 | `lantern-nightly-web` | `--auth staging-qa-user` fails due to MFA | Changed to `--auth staging-ci-token` |
-| B5 | `lantern-nightly-web` | No runner tag — runs on saas-linux, cannot reach staging | Added `tags: [staging-net]` |
+| B5 | `lantern-nightly-web` | No runner tag  runs on saas-linux, cannot reach staging | Added `tags: [staging-net]` |
 | B6 | `lantern-release-gate` | `allow_failure: true` bypasses the security block | Removed `allow_failure: true` |
 | B7 | `lantern-release-gate` | `--fail-on medium` contradicts release policy | Changed to `--fail-on high` |
-| B8 | `lantern-release-gate` | No `--baseline` — known findings block release | Added `--baseline $LANTERN_BASELINE_*` |
+| B8 | `lantern-release-gate` | No `--baseline`  known findings block release | Added `--baseline $LANTERN_BASELINE_*` |
 | B9 | `lantern-release-gate` | Exit 2 (timeout) not handled explicitly | Documented; exit 2 fails job → rerun or Imane approval |
 | B10 | `lantern-mr-android` | Fork MRs would exit 3 instead of being skipped | Added fork detection rule with `when: never` |
 | B11 | `lantern-release-gate` | No SARIF export | Added `lantern export` in `after_script` with 1-year artifact |
-| B12 | `lantern-nightly-mobile` | iOS scan had no `macos` tag — file not accessible | Split into two jobs; iOS job gets `tags: [macos]` |
+| B12 | `lantern-nightly-mobile` | iOS scan had no `macos` tag  file not accessible | Split into two jobs; iOS job gets `tags: [macos]` |
