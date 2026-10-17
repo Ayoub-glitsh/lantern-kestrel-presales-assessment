@@ -376,24 +376,36 @@ After each release, Lina is responsible for two steps. First, she reviews the ac
 
 If this step is skipped, the next release will compare against a stale baseline. Depending on the fingerprints involved, it may either block on findings that were already accepted, or fail to surface new ones if fingerprints overlap unexpectedly. Updating the baseline variables after every release is a mandatory item in the release runbook.
 
-```
-  Release N completes
-         │
-         ▼
-  Lina reviews scan results in Lantern dashboard
-         │
-         ▼
-  Lina records scan IDs in Jira KPAY release notes
-         │
-         ├── LANTERN_BASELINE_ANDROID  ←  new scan ID (e.g. rel-4.N-android)
-         └── LANTERN_BASELINE_IOS      ←  new scan ID (e.g. rel-4.N-ios)
-                    │
-                    ▼
-         Lina updates both protected CI variables in GitLab
-                    │
-                    ▼
-         Next release gate diffs against the new baseline
-         → only findings NEW since release N will count toward a block
+```mermaid
+
+flowchart TB
+    R["Release N completes"]
+
+    R --> REV["Lina reviews accepted scan results<br/>in the Lantern dashboard"]
+
+    REV --> JIRA["Lina records scan IDs<br/>in Jira KPAY release notes"]
+
+    JIRA --> SPLIT{"Update both<br/>CI variables"}
+
+    SPLIT --> V1["<b>LANTERN_BASELINE_ANDROID</b><br/>← new scan ID<br/>(e.g. rel-4.N-android)"]
+    SPLIT --> V2["<b>LANTERN_BASELINE_IOS</b><br/>← new scan ID<br/>(e.g. rel-4.N-ios)"]
+
+    V1 --> UPD["Lina updates both protected<br/>CI variables in GitLab"]
+    V2 --> UPD
+
+    UPD --> NEXT["Next release gate<br/>diffs against the new baseline"]
+
+    NEXT --> ONLY[" Only findings <b>NEW</b> since Release N<br/>will count toward a block"]
+
+    classDef step fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
+    classDef split fill:#fef9c3,stroke:#a16207,color:#713f12
+    classDef var fill:#e0e7ff,stroke:#4338ca,color:#1e1b4b
+    classDef result fill:#dcfce7,stroke:#15803d,color:#14532d
+
+    class R,REV,JIRA,UPD,NEXT step
+    class SPLIT split
+    class V1,V2 var
+    class ONLY result
 ```
 
 ### 5.3 Current Baseline Values
