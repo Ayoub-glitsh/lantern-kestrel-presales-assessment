@@ -48,38 +48,33 @@ The Lantern CLI runs inside a GitLab runner as part of a normal pipeline job. It
 
 A critical consequence of this architecture: **the runner only needs internet access to reach Lantern**, but for web/API scans, **Lantern's own scanners need to reach the web target directly** from their published egress IP ranges. This is why scanning `staging.kestrel.test` requires a firewall allowlist entry — the runner submitting the scan is not the machine doing the scanning.
 
+```mermaid
+flowchart TB
+    subgraph RUNNER["GitLab Runner"]
+        CMD["lantern scan mobile<br/>--file app.aab<br/>--plan mobile-full<br/>--baseline \$BASELINE_ID<br/>--wait --fail-on high"]
+    end
+
+    CMD -- "upload artefact (AAB/APK/IPA) ou URL" --> SAAS
+
+    subgraph SAAS["Lantern SaaS (EU)"]
+        direction TB
+        ENGINE["Scan Engine<br/>static + DAST"]
+        DIFF["Baseline diff<br/>& seuil de sévérité"]
+        ENGINE --> DIFF
+    end
+
+    SAAS -- "JSON result + exit code" --> GATE
+
+    subgraph GATE["Gate Decision"]
+        direction LR
+        G1["pass"]
+        G2["block"]
+        G3["report"]
+        G4["error"]
+        G5["skip"]
+    end
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        GitLab Runner                            │
-│                                                                 │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │  lantern scan mobile --file app.aab --plan mobile-full   │  │
-│   │                 --baseline $BASELINE_ID                  │  │
-│   │                 --wait --fail-on high                    │  │
-│   └──────────────────────────┬───────────────────────────────┘  │
-│                              │  uploads artifact / URL          │
-└──────────────────────────────┼──────────────────────────────────┘
-                               │
-                               ▼
-                   ┌───────────────────────┐
-                   │   Lantern SaaS (EU)   │
-                   │  ┌─────────────────┐  │
-                   │  │  Scan Engine    │  │
-                   │  │  static + dast  │  │
-                   │  └────────┬────────┘  │
-                   │  ┌────────▼────────┐  │
-                   │  │  Baseline diff  │  │
-                   │  │  & threshold    │  │
-                   │  └────────┬────────┘  │
-                   └───────────┼───────────┘
-                               │  JSON result + exit code
-                               ▼
-                   ┌───────────────────────┐
-                   │   Gate Decision       │
-                   │  pass / block /       │
-                   │  report / error / skip│
-                   └───────────────────────┘
-```
+
 
 ---
 
