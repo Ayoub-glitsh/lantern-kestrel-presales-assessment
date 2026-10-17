@@ -227,30 +227,27 @@ Two important constraints apply to the web scan. First, it must run on the `stag
 | `lantern-nightly-ios` | `Kestrel-adhoc.ipa` | `mobile-full` | — | `macos` | No — report |
 | `lantern-nightly-web` | `https://staging.kestrel.test` | DAST + OpenAPI | `staging-ci-token` | `staging-net` | No — report |
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Nightly Pipeline  02:00 UTC → 07:00 UTC on main  (5-hour budget)      │
-│                                                                         │
-│  ┌──────────────────────┐     ┌──────────────────────┐                 │
-│  │ build android AAB    │     │ build iOS ad-hoc IPA │                 │
-│  └──────────┬───────────┘     └──────────┬───────────┘                 │
-│             │                            │                             │
-│  ┌──────────▼───────────┐     ┌──────────▼───────────┐                 │
-│  │ scan mobile          │     │ scan mobile          │                 │
-│  │ plan: mobile-full    │     │ plan: mobile-full    │                 │
-│  │ --wait  --fail-on h  │     │ --wait  --fail-on h  │                 │
-│  │ → REPORT (no block)  │     │ → REPORT (no block)  │                 │
-│  └──────────────────────┘     └──────────────────────┘                 │
-│                                                                         │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │ lantern-nightly-web    runner: staging-net                       │   │
-│  │ scan web  --target https://staging.kestrel.test                  │   │
-│  │           --auth staging-ci-token                                │   │
-│  │           --openapi api/openapi.yaml  --wait                     │   │
-│  │ → REPORT (no block)                                              │   │
-│  │ ⚠️  pending: Lantern egress IP allowlist (E5)                   │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+
+flowchart TB
+    T["Nightly Pipeline<br/>02:00 UTC → 07:00 UTC on main<br/>5 h de budget"]
+
+    T --> A1["Build AAB Android"]
+    T --> I1["Build IPA iOS ad-hoc"]
+    T --> W1["Runner: staging-net"]
+
+    A1 --> A2["lantern-nightly-android<br/>plan: mobile-full<br/>--wait --fail-on high<br/>runner: saas-linux"]
+    I1 --> I2["lantern-nightly-ios<br/>plan: mobile-full<br/>--wait --fail-on high<br/>runner: macos"]
+    W1 --> W2["lantern-nightly-web<br/>--target https://staging.kestrel.test<br/>--auth staging-ci-token<br/>--openapi api/openapi.yaml<br/>--wait"]
+
+    W2 -.- E5["⚠️ E5 — egress IPs Lantern<br/>non allowlistées"]
+
+    A2 --> R["REPORT — no block"]
+    I2 --> R
+    W2 --> R
+
+    R --> D["Dashboard Lantern<br/>→ Jira KPAY"]
+
 ```
 
 ---
