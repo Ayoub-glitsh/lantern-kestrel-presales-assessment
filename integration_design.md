@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&pause=1000&center=true&vCenter=true&width=800&lines=Lantern+%C3%97+Kestrel+Pay+%E2%80%94+CI%2FCD+Integration+Design" alt="Lantern × Kestrel Pay  CI/CD Integration Design" />
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=25&pause=1000&center=true&vCenter=true&width=800&lines=Lantern+%C3%97+Kestrel+Pay+%E2%80%94+CI%2FCD+Integration+Design" alt="Lantern × Kestrel Pay  CI/CD Integration Design" />
 </div>
 
 
@@ -37,11 +37,11 @@ Kestrel Pay operates a GitLab monorepo with Android, iOS, web, and API component
 
 **Key design decisions at a glance:**
 
-- 🔒 **Release gate** blocks on new high/critical findings only, using baseline comparison
-- ⚡ **MR gate** uses static-only scan to fit within the 2-minute remaining budget
-- 📊 **Nightly pipeline** runs full scans (static + dynamic) and reports without blocking
-- 🚫 **Fork MRs** skip scanning  no API key is available by design (GitLab protected variables)
-- ❌ Exit codes `2` and `3` are always treated as `error`  never as a pass
+-  **Release gate** blocks on new high/critical findings only, using baseline comparison
+-  **MR gate** uses static-only scan to fit within the 2-minute remaining budget
+-  **Nightly pipeline** runs full scans (static + dynamic) and reports without blocking
+-  **Fork MRs** skip scanning  no API key is available by design (GitLab protected variables)
+-  Exit codes `2` and `3` are always treated as `error`  never as a pass
 
 ---
 
@@ -205,7 +205,7 @@ lantern scan mobile \
 
 flowchart LR
     L["lint<br/>2 min"] --> U["unit-tests<br/>5 min"] --> B["build-android-debug<br/>6 min"]
-    B -- "13 min utilisées<br/>⏱ 2 min restantes" --> S["lantern-mr-android<br/>plan: mobile-static<br/>--wait --fail-on high<br/>✅ tient dans 2 min"]
+    B -- "13 min utilisées<br/>⏱ 2 min restantes" --> S["lantern-mr-android<br/>plan: mobile-static<br/>--wait --fail-on high<br/> tient dans 2 min"]
     S --> G{"Gate"}
     G -- "exit 0" --> P["PASS"]
     G -- "exit 1" --> K["BLOCK"]
@@ -327,7 +327,7 @@ flowchart TB
 The current draft pipeline stores the Lantern API key as a hardcoded YAML variable. This means the key is visible to anyone with repository read access, is logged in CI job output, and is committed to Git history. This violates Kestrel's own security policy (E3) and must be remediated before the pipeline runs for the first time. The key `lk_live_7f3c9d1e2b4a4c8e9f0a1b2c3d4e5f60` must be **revoked immediately** from the Lantern dashboard (P8) and a new key generated.
 
 ```yaml
-# ❌ CURRENT DRAFT  CRITICAL ISSUE  key exposed in repository
+#  CURRENT DRAFT  CRITICAL ISSUE  key exposed in repository
 variables:
   LANTERN_API_KEY: "lk_live_7f3c9d1e2b4a4c8e9f0a1b2c3d4e5f60"
 ```
