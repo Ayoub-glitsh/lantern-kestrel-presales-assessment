@@ -3,7 +3,7 @@
 
 # Lantern × Kestrel Pay — CI/CD Integration Design
 
-| | |
+| Field | Details |
 |---|---|
 | **Document type** | Pre-Sales Integration Design |
 | **Prepared by** | Pre-Sales Engineer, Lantern |
