@@ -1,0 +1,69 @@
+{
+  "id": "S06",
+  "description": "Release 4.12.1 hotfix: Android gate after the security team triaged several findings.",
+  "context": {
+    "pipeline": "release",
+    "ref": "tag v4.12.1 on release/4.12",
+    "fork": false,
+    "runner_tag": "saas-linux",
+    "scan_target": "android",
+    "artifact_or_url": "android/app/build/outputs/bundle/release/app-release.aab",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected)",
+      "LANTERN_BASELINE_ANDROID": "rel-4.11-android"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7106",
+    "workspace_files": [
+      "android/app/build/outputs/bundle/release/app-release.aab"
+    ],
+    "baselines": {
+      "rel-4.11-android": [
+        "fp-and-01",
+        "fp-and-02",
+        "fp-and-03"
+      ]
+    },
+    "outcome": "completed",
+    "duration_min": 36,
+    "findings": [
+      {
+        "id": "F-601",
+        "severity": "critical",
+        "status": "false_positive",
+        "fingerprint": "fp-and-60",
+        "title": "SQL injection in local cache query"
+      },
+      {
+        "id": "F-602",
+        "severity": "high",
+        "status": "risk_accepted",
+        "fingerprint": "fp-and-61",
+        "title": "Certificate pinning missing for status endpoint"
+      },
+      {
+        "id": "F-603",
+        "severity": "high",
+        "status": "confirmed",
+        "fingerprint": "fp-and-03",
+        "title": "Weak random used for client nonce"
+      },
+      {
+        "id": "F-604",
+        "severity": "medium",
+        "status": "confirmed",
+        "fingerprint": "fp-and-62",
+        "title": "Screenshot not blocked on card screen"
+      },
+      {
+        "id": "F-605",
+        "severity": "high",
+        "status": "fixed",
+        "fingerprint": "fp-and-63",
+        "title": "Debuggable flag in release build"
+      }
+    ]
+  }
+}

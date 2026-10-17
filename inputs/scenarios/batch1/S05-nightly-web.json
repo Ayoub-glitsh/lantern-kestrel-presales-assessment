@@ -1,0 +1,31 @@
+{
+  "id": "S05",
+  "description": "Nightly scheduled pipeline on main: authenticated web and API scan of staging.",
+  "context": {
+    "pipeline": "nightly",
+    "ref": "schedule on main",
+    "fork": false,
+    "runner_tag": "staging-net",
+    "scan_target": "web",
+    "artifact_or_url": "https://staging.kestrel.test",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected) - value from 2026-10-16"
+    }
+  },
+  "lantern": {
+    "api_key_valid": false,
+    "scan_id": "scn-7105",
+    "workspace_files": [
+      "api/openapi.yaml"
+    ],
+    "auth_profiles": [
+      "staging-qa-user",
+      "staging-ci-token"
+    ],
+    "target_reachable": false,
+    "baselines": {},
+    "outcome": "completed",
+    "duration_min": 75,
+    "findings": []
+  }
+}

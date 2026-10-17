@@ -1,0 +1,40 @@
+{
+  "id": "S07",
+  "description": "Release 4.13.0: Android gate on a larger bundle; the service needs about 70 minutes.",
+  "context": {
+    "pipeline": "release",
+    "ref": "tag v4.13.0 on release/4.13",
+    "fork": false,
+    "runner_tag": "saas-linux",
+    "scan_target": "android",
+    "artifact_or_url": "android/app/build/outputs/bundle/release/app-release.aab",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected)",
+      "LANTERN_BASELINE_ANDROID": "rel-4.11-android"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7201",
+    "workspace_files": [
+      "android/app/build/outputs/bundle/release/app-release.aab"
+    ],
+    "baselines": {
+      "rel-4.11-android": [
+        "fp-and-01",
+        "fp-and-02"
+      ]
+    },
+    "outcome": "completed",
+    "duration_min": 70,
+    "findings": [
+      {
+        "id": "F-701",
+        "severity": "high",
+        "status": "open",
+        "fingerprint": "fp-and-70",
+        "title": "Intent redirection in deep link handler"
+      }
+    ]
+  }
+}

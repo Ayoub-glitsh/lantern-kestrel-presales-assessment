@@ -1,0 +1,47 @@
+{
+  "id": "S03",
+  "description": "Nightly scheduled pipeline on main: Android release bundle.",
+  "context": {
+    "pipeline": "nightly",
+    "ref": "schedule on main",
+    "fork": false,
+    "runner_tag": "saas-linux",
+    "scan_target": "android",
+    "artifact_or_url": "android/app/build/outputs/bundle/release/app-release.aab",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected)",
+      "LANTERN_BASELINE_ANDROID": "rel-4.11-android"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7103",
+    "workspace_files": [
+      "android/app/build/outputs/bundle/release/app-release.aab"
+    ],
+    "baselines": {
+      "rel-4.11-android": [
+        "fp-and-01",
+        "fp-and-02"
+      ]
+    },
+    "outcome": "completed",
+    "duration_min": 41,
+    "findings": [
+      {
+        "id": "F-301",
+        "severity": "high",
+        "status": "open",
+        "fingerprint": "fp-and-50",
+        "title": "WebView JavaScript bridge exposed to remote content"
+      },
+      {
+        "id": "F-302",
+        "severity": "medium",
+        "status": "confirmed",
+        "fingerprint": "fp-and-02",
+        "title": "Backup allowed for app data"
+      }
+    ]
+  }
+}

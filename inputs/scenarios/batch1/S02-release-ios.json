@@ -1,0 +1,47 @@
+{
+  "id": "S02",
+  "description": "Release 4.12.0: gate on the iOS build submitted to the App Store.",
+  "context": {
+    "pipeline": "release",
+    "ref": "tag v4.12.0 on release/4.12",
+    "fork": false,
+    "runner_tag": "macos",
+    "scan_target": "ios",
+    "artifact_or_url": "ios/build/Kestrel-appstore.ipa",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected)",
+      "LANTERN_BASELINE_IOS": "rel-4.11-ios"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7102",
+    "workspace_files": [
+      "ios/build/Kestrel-appstore.ipa"
+    ],
+    "ios_signing": "app_store",
+    "baselines": {
+      "rel-4.11-ios": [
+        "fp-ios-01"
+      ]
+    },
+    "outcome": "completed",
+    "duration_min": 28,
+    "findings": [
+      {
+        "id": "F-201",
+        "severity": "critical",
+        "status": "open",
+        "fingerprint": "fp-ios-40",
+        "title": "Payment provider secret embedded in binary"
+      },
+      {
+        "id": "F-202",
+        "severity": "high",
+        "status": "open",
+        "fingerprint": "fp-ios-01",
+        "title": "Keychain item accessible after first unlock"
+      }
+    ]
+  }
+}

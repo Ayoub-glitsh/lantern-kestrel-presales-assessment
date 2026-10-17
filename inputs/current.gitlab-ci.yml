@@ -1,0 +1,92 @@
+# Kestrel Pay monorepo pipeline: trial draft pushed by Rafa on 2026-10-16 to branch trial/lantern.
+# Fictional assessment fixture. It has never run against real systems. Build scripts are placeholders.
+
+stages: [lint, test, build, security, release]
+
+variables:
+  LANTERN_API_KEY: "lk_live_7f3c9d1e2b4a4c8e9f0a1b2c3d4e5f60"  # TODO: move somewhere safer after the trial
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+default:
+  tags: [saas-linux]
+
+lint:
+  stage: lint
+  script: [./scripts/lint.sh]
+
+unit-tests:
+  stage: test
+  script: [./scripts/unit.sh]
+
+build-android-debug:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script: [cd android && ./gradlew assembleDebug]
+  artifacts:
+    paths: [android/app/build/outputs/apk/debug/app-debug.apk]
+
+build-android-release:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  script: [cd android && ./gradlew bundleRelease]
+  artifacts:
+    paths: [android/app/build/outputs/bundle/release/app-release.aab]
+
+build-ios-adhoc:
+  stage: build
+  tags: [macos]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script: [./scripts/ios-build.sh adhoc ios/build/Kestrel-adhoc.ipa]
+  artifacts:
+    paths: [ios/build/Kestrel-adhoc.ipa]
+
+build-ios-release:
+  stage: build
+  tags: [macos]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  script: [./scripts/ios-build.sh appstore ios/build/Kestrel-appstore.ipa]
+  artifacts:
+    paths: [ios/build/Kestrel-appstore.ipa]
+
+lantern-mr-android:
+  stage: security
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - lantern scan mobile --file android/app/build/outputs/apk/debug/app-debug.apk --plan mobile-full --wait --fail-on high
+
+lantern-nightly-mobile:
+  stage: security
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - lantern scan mobile --file android/app/build/outputs/bundle/release/app-release.aab --plan mobile-full --wait --fail-on high || true
+    - lantern scan mobile --file ios/build/Kestrel-adhoc.ipa --plan mobile-full --wait --fail-on high || true
+
+lantern-nightly-web:
+  stage: security
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - lantern scan web --target https://staging.kestrel.test --auth staging-qa-user --wait --fail-on high || true
+
+lantern-release-gate:
+  stage: security
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+  allow_failure: true
+  script:
+    - lantern scan mobile --file android/app/build/outputs/bundle/release/app-release.aab --plan mobile-full --wait --fail-on medium
+    - lantern scan mobile --file ios/build/Kestrel-appstore.ipa --plan mobile-full --wait --fail-on medium
+
+publish:
+  stage: release
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v/'
+      when: manual
+  script: [./scripts/publish.sh]

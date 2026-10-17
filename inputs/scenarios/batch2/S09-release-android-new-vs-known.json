@@ -1,0 +1,54 @@
+{
+  "id": "S09",
+  "description": "Release 4.13.1: Android gate with one known and one new high finding.",
+  "context": {
+    "pipeline": "release",
+    "ref": "tag v4.13.1 on release/4.13",
+    "fork": false,
+    "runner_tag": "saas-linux",
+    "scan_target": "android",
+    "artifact_or_url": "android/app/build/outputs/bundle/release/app-release.aab",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected)",
+      "LANTERN_BASELINE_ANDROID": "rel-4.11-android"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7203",
+    "workspace_files": [
+      "android/app/build/outputs/bundle/release/app-release.aab"
+    ],
+    "baselines": {
+      "rel-4.11-android": [
+        "fp-and-01",
+        "fp-and-02"
+      ]
+    },
+    "outcome": "completed",
+    "duration_min": 39,
+    "findings": [
+      {
+        "id": "F-901",
+        "severity": "high",
+        "status": "open",
+        "fingerprint": "fp-and-01",
+        "title": "Exported activity without permission check"
+      },
+      {
+        "id": "F-902",
+        "severity": "high",
+        "status": "open",
+        "fingerprint": "fp-and-90",
+        "title": "Token stored in shared preferences without encryption"
+      },
+      {
+        "id": "F-903",
+        "severity": "critical",
+        "status": "risk_accepted",
+        "fingerprint": "fp-and-91",
+        "title": "Legacy payment SDK with known vulnerability"
+      }
+    ]
+  }
+}

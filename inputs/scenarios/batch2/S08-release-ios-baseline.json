@@ -1,0 +1,40 @@
+{
+  "id": "S08",
+  "description": "Release 4.13.0: iOS gate; the baseline variable was pre-filled with the next release ID.",
+  "context": {
+    "pipeline": "release",
+    "ref": "tag v4.13.0 on release/4.13",
+    "fork": false,
+    "runner_tag": "macos",
+    "scan_target": "ios",
+    "artifact_or_url": "ios/build/Kestrel-appstore.ipa",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected)",
+      "LANTERN_BASELINE_IOS": "rel-4.12-ios"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7202",
+    "workspace_files": [
+      "ios/build/Kestrel-appstore.ipa"
+    ],
+    "ios_signing": "app_store",
+    "baselines": {
+      "rel-4.11-ios": [
+        "fp-ios-01"
+      ]
+    },
+    "outcome": "completed",
+    "duration_min": 27,
+    "findings": [
+      {
+        "id": "F-801",
+        "severity": "low",
+        "status": "open",
+        "fingerprint": "fp-ios-80",
+        "title": "Pasteboard used for one-time code"
+      }
+    ]
+  }
+}

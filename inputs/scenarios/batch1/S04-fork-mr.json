@@ -1,0 +1,26 @@
+{
+  "id": "S04",
+  "description": "Merge request from an external contributor's fork into main.",
+  "context": {
+    "pipeline": "merge_request",
+    "ref": "fork:contrib/web-sdk-fix -> main",
+    "fork": true,
+    "runner_tag": "saas-linux",
+    "scan_target": "android",
+    "artifact_or_url": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "ci_variables": {
+      "LANTERN_API_KEY": "absent (fork merge request: project variables are not exposed)"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7104",
+    "workspace_files": [
+      "android/app/build/outputs/apk/debug/app-debug.apk"
+    ],
+    "baselines": {},
+    "outcome": "completed",
+    "duration_min": 31,
+    "findings": []
+  }
+}

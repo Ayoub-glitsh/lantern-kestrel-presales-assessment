@@ -1,0 +1,54 @@
+{
+  "id": "S01",
+  "description": "Release 4.12.0: gate on the Android release bundle.",
+  "context": {
+    "pipeline": "release",
+    "ref": "tag v4.12.0 on release/4.12",
+    "fork": false,
+    "runner_tag": "saas-linux",
+    "scan_target": "android",
+    "artifact_or_url": "android/app/build/outputs/bundle/release/app-release.aab",
+    "ci_variables": {
+      "LANTERN_API_KEY": "set (masked, protected)",
+      "LANTERN_BASELINE_ANDROID": "rel-4.11-android"
+    }
+  },
+  "lantern": {
+    "api_key_valid": true,
+    "scan_id": "scn-7101",
+    "workspace_files": [
+      "android/app/build/outputs/bundle/release/app-release.aab"
+    ],
+    "baselines": {
+      "rel-4.11-android": [
+        "fp-and-01",
+        "fp-and-02"
+      ]
+    },
+    "outcome": "completed",
+    "duration_min": 34,
+    "findings": [
+      {
+        "id": "F-101",
+        "severity": "high",
+        "status": "open",
+        "fingerprint": "fp-and-01",
+        "title": "Exported activity without permission check"
+      },
+      {
+        "id": "F-102",
+        "severity": "medium",
+        "status": "open",
+        "fingerprint": "fp-and-31",
+        "title": "Cleartext traffic allowed for analytics domain"
+      },
+      {
+        "id": "F-103",
+        "severity": "low",
+        "status": "open",
+        "fingerprint": "fp-and-32",
+        "title": "Verbose logging of request identifiers"
+      }
+    ]
+  }
+}
