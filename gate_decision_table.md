@@ -21,11 +21,11 @@ Every scan outcome resolves to exactly **one** of these five labels:
 
 | Label | Meaning | Pipeline continues? |
 |---|---|---|
-| `pass` | Scan completed — zero counted findings at or above threshold |  Yes |
-| `block` | Scan completed — at least one counted finding at or above threshold |  No |
-| `report` | Findings recorded and routed to Jira — nightly only, never blocks |  Yes |
-| `error` | No usable result (scan error or config/auth failure) — **never treated as pass** |  No |
-| `skip` | Scan intentionally not run — fork MR without API key |  Yes |
+| `pass` | Scan completed — zero counted findings at or above threshold | ✅ Yes |
+| `block` | Scan completed — at least one counted finding at or above threshold | ❌ No |
+| `report` | Findings recorded and routed to Jira — nightly only, never blocks | ✅ Yes |
+| `error` | No usable result (scan error or config/auth failure) — **never treated as pass** | ❌ No |
+| `skip` | Scan intentionally not run — fork MR without API key | ✅ Yes |
 
 > **Critical rule:** Exit codes 2 and 3 always produce `error`. They never produce `pass`, `block`, or `report`.
 
@@ -85,12 +85,12 @@ Apply rows top to bottom. Stop at the **first row that matches** all conditions.
 
 | Row | Pipeline type | Fork | Key valid | Exit code | Counted findings | Label | Reason |
 |---|---|---|---|---|---|---|---|
-| 1 | any |  yes | — | — | — | `skip` | Fork MR — key not injected by GitLab (E3) |
-| 2 | any | no |  no / invalid | 3 | — | `error` | Auth/config error before submission (P5, P8) |
-| 3 | any | no |  yes | 2 | — | `error` | Scan error or --wait timeout after 60 min (P4, P5) |
-| 4 | nightly | no |  yes | 0 or 1 | any | `report` | Nightly is monitoring only — never blocks |
-| 5 | release / MR | no |  yes | 0 | 0 | `pass` | Scan completed, no new finding at or above threshold |
-| 6 | release / MR | no |  yes | 1 | ≥ 1 | `block` | New high/critical finding — pipeline must stop |
+| 1 | any | ✅ yes | — | — | — | `skip` | Fork MR — key not injected by GitLab (E3) |
+| 2 | any | no | ❌ no / invalid | 3 | — | `error` | Auth/config error before submission (P5, P8) |
+| 3 | any | no | ✅ yes | 2 | — | `error` | Scan error or --wait timeout after 60 min (P4, P5) |
+| 4 | nightly | no | ✅ yes | 0 or 1 | any | `report` | Nightly is monitoring only — never blocks |
+| 5 | release / MR | no | ✅ yes | 0 | 0 | `pass` | Scan completed, no new finding at or above threshold |
+| 6 | release / MR | no | ✅ yes | 1 | ≥ 1 | `block` | New high/critical finding — pipeline must stop |
 
 > **Note on row 4:** Even if nightly produces exit 1 (findings detected), the label is `report` — not `block`. The pipeline job itself exits 0 after logging the findings (handled in the revised pipeline script).
 
@@ -105,19 +105,19 @@ Before applying the decision table, compute the **counted findings** for the sca
 A finding **counts** (contributes to exit code 1) only if **all three** conditions are true:
 
 ```
-    severity  >=  --fail-on threshold  (high or critical)
-    status    ==  "open"  OR  "confirmed"
-    fingerprint  NOT present in the baseline scan
+  ✅  severity  >=  --fail-on threshold  (high or critical)
+  ✅  status    ==  "open"  OR  "confirmed"
+  ✅  fingerprint  NOT present in the baseline scan
 ```
 
 A finding is **excluded** (does not count) if **any** of these apply:
 
 ```
-    status  ==  "false_positive"          → never counts regardless of severity
-    status  ==  "risk_accepted"           → never counts regardless of severity
-    status  ==  "fixed"                   → never counts regardless of severity
-    fingerprint  IN  baseline fingerprints → excluded_by_baseline, never counts
-    severity  <  threshold                → below the fail-on level, ignored
+  ❌  status  ==  "false_positive"          → never counts regardless of severity
+  ❌  status  ==  "risk_accepted"           → never counts regardless of severity
+  ❌  status  ==  "fixed"                   → never counts regardless of severity
+  ❌  fingerprint  IN  baseline fingerprints → excluded_by_baseline, never counts
+  ❌  severity  <  threshold                → below the fail-on level, ignored
 ```
 
 > **Ref:** P6 (statuses that count), P7 (baseline exclusion mechanism)
@@ -147,9 +147,9 @@ lantern scan mobile \
 
 | Finding | Severity | Status | Fingerprint | In baseline? | Counts? |
 |---|---|---|---|---|---|
-| F-101 — Exported activity without permission check | high | open | `fp-and-01` |  yes |  excluded by baseline (P7) |
-| F-102 — Cleartext traffic allowed for analytics domain | medium | open | `fp-and-31` |  no |  below threshold (medium < high) |
-| F-103 — Verbose logging of request identifiers | low | open | `fp-and-32` |  no |  below threshold (low < high) |
+| F-101 — Exported activity without permission check | high | open | `fp-and-01` | ✅ yes | ❌ excluded by baseline (P7) |
+| F-102 — Cleartext traffic allowed for analytics domain | medium | open | `fp-and-31` | ❌ no | ❌ below threshold (medium < high) |
+| F-103 — Verbose logging of request identifiers | low | open | `fp-and-32` | ❌ no | ❌ below threshold (low < high) |
 
 **Counted findings: 0**
 
@@ -181,8 +181,8 @@ lantern scan mobile \
 
 | Finding | Severity | Status | Fingerprint | In baseline? | Counts? |
 |---|---|---|---|---|---|
-| F-201 — Payment provider secret embedded in binary | critical | open | `fp-ios-40` |  no |  **counts** — new critical, open, above threshold |
-| F-202 — Keychain item accessible after first unlock | high | open | `fp-ios-01` |  yes |  excluded by baseline (P7) |
+| F-201 — Payment provider secret embedded in binary | critical | open | `fp-ios-40` | ❌ no | ✅ **counts** — new critical, open, above threshold |
+| F-202 — Keychain item accessible after first unlock | high | open | `fp-ios-01` | ✅ yes | ❌ excluded by baseline (P7) |
 
 **Counted findings: 1** (F-201)
 
@@ -214,8 +214,8 @@ lantern scan mobile \
 
 | Finding | Severity | Status | Fingerprint | In baseline? | Counts toward exit 1? |
 |---|---|---|---|---|---|
-| F-301 — WebView JavaScript bridge exposed to remote content | high | open | `fp-and-50` |  no |  yes (exit 1 fired) |
-| F-302 — Backup allowed for app data | medium | confirmed | `fp-and-02` |  yes |  below threshold AND in baseline |
+| F-301 — WebView JavaScript bridge exposed to remote content | high | open | `fp-and-50` | ❌ no | ✅ yes (exit 1 fired) |
+| F-302 — Backup allowed for app data | medium | confirmed | `fp-and-02` | ✅ yes | ❌ below threshold AND in baseline |
 
 **Counted findings: 1** (F-301) → CLI exits 1
 
@@ -296,11 +296,11 @@ lantern scan mobile \
 
 | Finding | Severity | Status | Fingerprint | In baseline? | Counts? | Reason |
 |---|---|---|---|---|---|---|
-| F-601 — SQL injection in local cache query | critical | false_positive | `fp-and-60` |  no |  | Status `false_positive` never counts (P6) |
-| F-602 — Certificate pinning missing for status endpoint | high | risk_accepted | `fp-and-61` |  no |  | Status `risk_accepted` never counts (P6) |
-| F-603 — Weak random used for client nonce | high | confirmed | `fp-and-03` |  yes |  | Fingerprint in baseline — excluded (P7) |
-| F-604 — Screenshot not blocked on card screen | medium | confirmed | `fp-and-62` |  no |  | Below threshold (medium < high) |
-| F-605 — Debuggable flag in release build | high | fixed | `fp-and-63` |  no |  | Status `fixed` never counts (P6) |
+| F-601 — SQL injection in local cache query | critical | false_positive | `fp-and-60` | ❌ no | ❌ | Status `false_positive` never counts (P6) |
+| F-602 — Certificate pinning missing for status endpoint | high | risk_accepted | `fp-and-61` | ❌ no | ❌ | Status `risk_accepted` never counts (P6) |
+| F-603 — Weak random used for client nonce | high | confirmed | `fp-and-03` | ✅ yes | ❌ | Fingerprint in baseline — excluded (P7) |
+| F-604 — Screenshot not blocked on card screen | medium | confirmed | `fp-and-62` | ❌ no | ❌ | Below threshold (medium < high) |
+| F-605 — Debuggable flag in release build | high | fixed | `fp-and-63` | ❌ no | ❌ | Status `fixed` never counts (P6) |
 
 **Counted findings: 0**
 
