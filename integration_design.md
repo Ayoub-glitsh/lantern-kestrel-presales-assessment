@@ -457,7 +457,7 @@ This means a `PASS` on a release with known vulnerabilities is not a mistake. Th
 ```
   A finding COUNTS toward exit 1 only if ALL three conditions are true:
   ┌────────────────────────────────────────────────────────────┐
-  │  ✅  severity  >=  threshold (e.g. high or critical)      │
+  │  ✅  severity  >=  threshold (e.g. high or critical)       │
   │  ✅  status    ==  "open"  OR  "confirmed"                 │
   │  ✅  fingerprint  NOT in baseline scan                     │
   └────────────────────────────────────────────────────────────┘
