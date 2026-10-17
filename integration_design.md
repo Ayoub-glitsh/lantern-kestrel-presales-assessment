@@ -289,29 +289,32 @@ lantern export \
   --out lantern-release.sarif
 ```
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Release Pipeline   triggered by v* tag on release/*   budget: 90 min  │
-│                                                                         │
-│  build android AAB              build iOS App Store IPA                 │
-│         │                                  │                            │
-│  ┌──────▼──────────────┐    ┌──────────────▼────────────────┐           │
-│  │ scan mobile (full)  │    │ scan mobile (full)            │           │
-│  │ --baseline ANDROID  │    │ --baseline IOS                │           │
-│  │ --fail-on high      │    │ --fail-on high                │           │
-│  │ static + dynamic ✅ │    │ static only ✅                │           │
-│  │                     │    │ DAST skipped (encrypted) ⚠️  │           │
-│  └──────────┬──────────┘    └──────────────┬────────────────┘           │
-│             └──────────────┬───────────────┘                            │
-│                            │                                            │
-│                  ┌─────────▼──────────┐                                 │
-│                  │   Gate Decision    │                                 │
-│                  │  exit 0 → PASS ───────► export SARIF → publish 🔓   │
-│                  │  exit 1 → BLOCK ──────► publish locked 🔒           │
-│                  │  exit 2 → ERROR ──────► rerun or Imane approval     │
-│                  │  exit 3 → ERROR ──────► fix config & rerun          │
-│                  └────────────────────┘                                 │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+
+flowchart TB
+    T["Release Pipeline<br/>v* tag on release/*<br/>budget : 90 min"]
+
+    T --> A1["Build AAB Android"]
+    T --> I1["Build IPA App Store"]
+
+    A1 --> A2["scan mobile (full)<br/>--baseline ANDROID<br/>--fail-on high<br/>static + dynamic ✅"]
+    I1 --> I2["scan mobile (full)<br/>--baseline IOS<br/>--fail-on high<br/>static only ✅<br/>DAST skipped (encrypted) ⚠️ P1"]
+
+    A2 --> G{"Gate Decision"}
+    I2 --> G
+
+    G -- "exit 0" --> P["PASS"]
+    P --> S["export SARIF"] --> PUB["publish 🔓"]
+
+    G -- "exit 1" --> B["BLOCK"]
+    B --> L["publish locked 🔒"]
+
+    G -- "exit 2" --> E2["ERROR — rerun or Imane approval"]
+    G -- "exit 3" --> E3["ERROR — fix config & rerun"]
+    E2 --> L
+    E3 --> L
+
+
 ```
 
 ---
