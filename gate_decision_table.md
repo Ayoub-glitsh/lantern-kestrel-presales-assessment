@@ -36,31 +36,30 @@ Every scan outcome resolves to exactly **one** of these five labels:
 The flowchart below shows the exact order in which conditions are evaluated. Apply each check top to bottom and stop at the first match.
 
 ```mermaid
-
 flowchart TB
-    START(["START — un job Lantern scan<br/>va s'exécuter"])
+    START(["START — a Lantern scan job<br/>is about to run"])
 
-    START --> Q1{"1. Est-ce une MR<br/>depuis un fork ?<br/><i>CI_MERGE_REQUEST_SOURCE_PROJECT_ID<br/>≠ CI_PROJECT_ID</i>"}
+    START --> Q1{"1. Is this a fork MR?<br/><i>CI_MERGE_REQUEST_SOURCE_PROJECT_ID<br/>≠ CI_PROJECT_ID</i>"}
 
-    Q1 -- "YES" --> SKIP["<b>SKIP</b><br/>Raison : pas de LANTERN_API_KEY<br/>sur pipeline fork (E3)"]
+    Q1 -- "YES" --> SKIP["<b>SKIP</b><br/>Reason: no LANTERN_API_KEY<br/>on fork pipelines (E3)"]
 
-    Q1 -- "NO" --> Q2{"2. LANTERN_API_KEY<br/>présente et valide ?<br/><i>api_key_valid == true</i>"}
+    Q1 -- "NO" --> Q2{"2. Is LANTERN_API_KEY<br/>set and valid?<br/><i>api_key_valid == true</i>"}
 
-    Q2 -- "NO" --> ERR3["<b>ERROR (exit 3)</b><br/>Raison : clé manquante, révoquée,<br/>ou erreur config avant soumission<br/>(P8, P5)"]
+    Q2 -- "NO" --> ERR3["<b>ERROR (exit 3)</b><br/>Reason: key missing, revoked,<br/>or config error before submission<br/>(P8, P5)"]
 
-    Q2 -- "YES" --> Q3{"3. --wait terminé<br/>en moins de 60 min ?<br/><i>outcome ≠ timeout / scan error</i>"}
+    Q2 -- "YES" --> Q3{"3. Did --wait complete<br/>within 60 min?<br/><i>outcome ≠ timeout / scan error</i>"}
 
-    Q3 -- "NO" --> ERR2["<b>ERROR (exit 2)</b><br/>Raison : --wait timeout<br/>ou erreur scan côté serveur<br/>(P4, P5)"]
+    Q3 -- "NO" --> ERR2["<b>ERROR (exit 2)</b><br/>Reason: --wait timed out<br/>or scan error server-side<br/>(P4, P5)"]
 
-    Q3 -- "YES" --> Q4{"4. Type de<br/>pipeline ?"}
+    Q3 -- "YES" --> Q4{"4. What is the<br/>pipeline type?"}
 
-    Q4 -- "NIGHTLY" --> REPORT["<b>REPORT</b><br/>Raison : nightly = monitoring only,<br/>ne bloque jamais<br/>(design §3.2)"]
+    Q4 -- "NIGHTLY" --> REPORT["<b>REPORT</b><br/>Reason: nightly is monitoring only,<br/>never blocks<br/>(design §3.2)"]
 
-    Q4 -- "MR / RELEASE" --> Q5{"5. Compter les findings<br/>qui satisfont TOUS :<br/>• severity ≥ seuil (high)<br/>• status ∈ open, confirmed<br/>• fingerprint ∉ baseline"}
+    Q4 -- "MR / RELEASE" --> Q5{"5. Count findings<br/>that meet ALL of:<br/>• severity ≥ threshold (high)<br/>• status ∈ open, confirmed<br/>• fingerprint ∉ baseline"}
 
-    Q5 -- "count == 0" --> PASS["<b>PASS</b><br/>Raison : scan terminé,<br/>aucun nouveau finding<br/>au-dessus du seuil"]
+    Q5 -- "count == 0" --> PASS["<b>PASS</b><br/>Reason: scan completed,<br/>no new finding at or above<br/>the threshold"]
 
-    Q5 -- "count ≥ 1" --> BLOCK["<b>BLOCK</b><br/>Raison : nouveau finding<br/>high/critical détecté"]
+    Q5 -- "count ≥ 1" --> BLOCK["<b>BLOCK</b><br/>Reason: new high/critical<br/>finding detected"]
 
     %% Styles
     classDef skip    fill:#e0e7ff,stroke:#4338ca,color:#1e1b4b
