@@ -14,9 +14,9 @@ variables:
 default:
   tags: [saas-linux]
 
-# ──────────────────────────────────────────────
+# 
 # LINT & TEST (unchanged)
-# ──────────────────────────────────────────────
+# 
 
 lint:
   stage: lint
@@ -26,9 +26,9 @@ unit-tests:
   stage: test
   script: [./scripts/unit.sh]
 
-# ──────────────────────────────────────────────
+# 
 # BUILD JOBS (unchanged except comments)
-# ──────────────────────────────────────────────
+# 
 
 build-android-debug:
   stage: build
@@ -69,9 +69,9 @@ build-ios-release:
     paths: [ios/build/Kestrel-appstore.ipa]
     expire_in: 7 days
 
-# ──────────────────────────────────────────────
+# 
 # SECURITY — MERGE REQUEST
-# ──────────────────────────────────────────────
+# 
 
 lantern-mr-android:
   stage: security
@@ -91,9 +91,9 @@ lantern-mr-android:
         --wait
         --fail-on high
 
-# ──────────────────────────────────────────────
+# 
 # SECURITY — NIGHTLY
-# ──────────────────────────────────────────────
+# 
 
 lantern-nightly-android:
   stage: security
@@ -166,9 +166,9 @@ lantern-nightly-web:
       fi
       exit $EXIT
 
-# ──────────────────────────────────────────────
+# 
 # SECURITY — RELEASE GATE
-# ──────────────────────────────────────────────
+# 
 
 lantern-release-android:
   stage: security
@@ -239,9 +239,9 @@ lantern-release-ios:
     expire_in: 1 year
     when: always
 
-# ──────────────────────────────────────────────
+# 
 # RELEASE — PUBLISH (unchanged logic)
-# ──────────────────────────────────────────────
+# 
 
 publish:
   stage: release
